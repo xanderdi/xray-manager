@@ -1,0 +1,35 @@
+#!/bin/bash
+set -u
+
+XRAY_SERVICE="xray.service"
+STATE_DIR="/run/xray-manager"
+MODE_FILE="${STATE_DIR}/mode"
+
+get_mode() {
+    if [[ -r "$MODE_FILE" ]]; then
+        cat "$MODE_FILE"
+    else
+        echo "UNKNOWN"
+    fi
+}
+
+echo "=== Xray Manager ==="
+echo "Mode: $(get_mode)"
+
+if systemctl is-active --quiet "$XRAY_SERVICE"; then
+    echo "Service: active"
+else
+    echo "Service: inactive"
+fi
+
+echo
+echo "=== SOCKS ==="
+ss -lnt 2>/dev/null | grep ':10808' || echo "127.0.0.1:10808 not listening"
+
+echo
+echo "=== TUN ==="
+ip link show xray0 2>/dev/null || echo "xray0 absent"
+
+echo
+echo "=== Routes ==="
+ip -4 route show

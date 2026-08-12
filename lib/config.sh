@@ -1,0 +1,6 @@
+#!/bin/bash
+
+XRAY_IF="xray0"
+XRAY_ADDR="172.19.0.1/30"
+
+XRAY_SERVER="${XRAY_SERVER:-VPN_SERVER}"

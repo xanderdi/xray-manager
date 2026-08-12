@@ -1,0 +1,148 @@
+#!/bin/bash
+set -euo pipefail
+
+XRAY_SERVICE="xray.service"
+CONFIG_DIR="/usr/local/etc/xray"
+ACTIVE_CONFIG="${CONFIG_DIR}/config.json"
+SOCKS_CONFIG="${CONFIG_DIR}/config.proxy.json"
+
+STATE_DIR="/run/xray-manager"
+MODE_FILE="${STATE_DIR}/mode"
+
+source /usr/local/lib/xray-manager/routes.sh
+
+usage() {
+    echo "Usage: xray-mode {off|socks|split|full}"
+    exit 1
+}
+
+require_root() {
+    if [[ $EUID -ne 0 ]]; then
+        echo "ERROR: run with sudo"
+        exit 1
+    fi
+}
+
+set_mode() {
+    mkdir -p "$STATE_DIR"
+    printf '%s\n' "$1" > "$MODE_FILE"
+}
+
+get_mode() {
+    if [[ -r "$MODE_FILE" ]]; then
+        cat "$MODE_FILE"
+    else
+        echo "UNKNOWN"
+    fi
+}
+
+mode_off() {
+    full_routes_del
+    server_bypass_del
+    systemctl stop "$XRAY_SERVICE"
+    tun_cleanup
+    set_mode "OFF"
+    echo "Mode: OFF"
+}
+
+mode_socks() {
+    full_routes_del
+    server_bypass_del
+
+    cp -f "$SOCKS_CONFIG" "$ACTIVE_CONFIG"
+
+    /usr/local/bin/xray run -test -config "$ACTIVE_CONFIG" >/dev/null
+
+    systemctl restart "$XRAY_SERVICE"
+    tun_cleanup
+
+    # Wait until SOCKS listener is actually ready
+    for _ in {1..20}; do
+        if ss -lnt 2>/dev/null | grep -q ':10808'; then
+            break
+        fi
+        sleep 0.1
+    done
+
+    if ! ss -lnt 2>/dev/null | grep -q ':10808'; then
+        echo "ERROR: Xray started, but SOCKS port 127.0.0.1:10808 is not listening"
+        exit 1
+    fi
+
+    set_mode "SOCKS"
+
+    echo "Mode: SOCKS"
+    echo "SOCKS5: 127.0.0.1:10808"
+}
+
+mode_split() {
+    cp -f "${CONFIG_DIR}/config.split.manual.json" "$ACTIVE_CONFIG"
+
+    /usr/local/bin/xray run -test -config "$ACTIVE_CONFIG" >/dev/null
+    systemctl restart "$XRAY_SERVICE"
+
+    for _ in {1..20}; do
+        [[ -e /sys/class/net/xray0 ]] && break
+        sleep 0.1
+    done
+
+    [[ -e /sys/class/net/xray0 ]] || {
+        echo "ERROR: xray0 was not created"
+        return 1
+    }
+
+    tun_prepare
+    server_bypass_add
+    full_routes_add
+
+    set_mode "SPLIT"
+
+    echo "Mode: SPLIT"
+}
+
+mode_full() {
+    cp -f "${CONFIG_DIR}/config.tun.json" "$ACTIVE_CONFIG"
+
+    /usr/local/bin/xray run -test -config "$ACTIVE_CONFIG" >/dev/null
+    systemctl restart "$XRAY_SERVICE"
+
+    for _ in {1..20}; do
+        [[ -e /sys/class/net/xray0 ]] && break
+        sleep 0.1
+    done
+
+    [[ -e /sys/class/net/xray0 ]] || {
+        echo "ERROR: xray0 was not created"
+        return 1
+    }
+
+    tun_prepare
+    server_bypass_add
+    full_routes_add
+
+    set_mode "FULL"
+
+    echo "Mode: FULL"
+}
+
+case "${1:-}" in
+    off)
+        require_root
+        mode_off
+        ;;
+    socks)
+        require_root
+        mode_socks
+        ;;
+    split)
+        require_root
+        mode_split
+        ;;
+    full)
+        require_root
+        mode_full
+        ;;
+    *)
+        usage
+        ;;
+esac
