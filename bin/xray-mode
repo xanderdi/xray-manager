@@ -1,15 +1,11 @@
 #!/bin/bash
 set -euo pipefail
 
-XRAY_SERVICE="xray.service"
-CONFIG_DIR="/usr/local/etc/xray"
-ACTIVE_CONFIG="${CONFIG_DIR}/config.json"
-SOCKS_CONFIG="${CONFIG_DIR}/config.proxy.json"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
 
-STATE_DIR="/run/xray-manager"
-MODE_FILE="${STATE_DIR}/mode"
-
-source /usr/local/lib/xray-manager/routes.sh
+source "${PROJECT_DIR}/lib/config.sh"
+source "${PROJECT_DIR}/lib/routes.sh"
 
 usage() {
     echo "Usage: xray-mode {off|socks|split|full}"
@@ -24,13 +20,13 @@ require_root() {
 }
 
 set_mode() {
-    mkdir -p "$STATE_DIR"
-    printf '%s\n' "$1" > "$MODE_FILE"
+    mkdir -p "$XRAY_STATE_DIR"
+    printf '%s\n' "$1" > "$XRAY_MODE_FILE"
 }
 
 get_mode() {
-    if [[ -r "$MODE_FILE" ]]; then
-        cat "$MODE_FILE"
+    if [[ -r "$XRAY_MODE_FILE" ]]; then
+        cat "$XRAY_MODE_FILE"
     else
         echo "UNKNOWN"
     fi
@@ -49,36 +45,36 @@ mode_socks() {
     full_routes_del
     server_bypass_del
 
-    cp -f "$SOCKS_CONFIG" "$ACTIVE_CONFIG"
+    cp -f "$XRAY_SOCKS_CONFIG" "$XRAY_ACTIVE_CONFIG"
 
-    /usr/local/bin/xray run -test -config "$ACTIVE_CONFIG" >/dev/null
+    "$XRAY_BIN" run -test -config "$XRAY_ACTIVE_CONFIG" >/dev/null
 
     systemctl restart "$XRAY_SERVICE"
     tun_cleanup
 
     # Wait until SOCKS listener is actually ready
     for _ in {1..20}; do
-        if ss -lnt 2>/dev/null | grep -q ':10808'; then
+        if ss -lnt 2>/dev/null | grep -q ":${XRAY_SOCKS_PORT}"; then
             break
         fi
         sleep 0.1
     done
 
-    if ! ss -lnt 2>/dev/null | grep -q ':10808'; then
-        echo "ERROR: Xray started, but SOCKS port 127.0.0.1:10808 is not listening"
+    if ! ss -lnt 2>/dev/null | grep -q ":${XRAY_SOCKS_PORT}"; then
+        echo "ERROR: Xray started, but SOCKS port ${XRAY_SOCKS_HOST}:${XRAY_SOCKS_PORT} is not listening"
         exit 1
     fi
 
     set_mode "SOCKS"
 
     echo "Mode: SOCKS"
-    echo "SOCKS5: 127.0.0.1:10808"
+    echo "SOCKS5: ${XRAY_SOCKS_HOST}:${XRAY_SOCKS_PORT}"
 }
 
 mode_split() {
-    cp -f "${CONFIG_DIR}/config.split.manual.json" "$ACTIVE_CONFIG"
+    cp -f "$XRAY_SPLIT_CONFIG" "$XRAY_ACTIVE_CONFIG"
 
-    /usr/local/bin/xray run -test -config "$ACTIVE_CONFIG" >/dev/null
+    "$XRAY_BIN" run -test -config "$XRAY_ACTIVE_CONFIG" >/dev/null
     systemctl restart "$XRAY_SERVICE"
 
     for _ in {1..20}; do
@@ -101,9 +97,9 @@ mode_split() {
 }
 
 mode_full() {
-    cp -f "${CONFIG_DIR}/config.tun.json" "$ACTIVE_CONFIG"
+    cp -f "$XRAY_FULL_CONFIG" "$XRAY_ACTIVE_CONFIG"
 
-    /usr/local/bin/xray run -test -config "$ACTIVE_CONFIG" >/dev/null
+    "$XRAY_BIN" run -test -config "$XRAY_ACTIVE_CONFIG" >/dev/null
     systemctl restart "$XRAY_SERVICE"
 
     for _ in {1..20}; do

@@ -1,0 +1,11 @@
+# xray-manager runtime settings
+# Installed as:
+# /etc/xray-manager/xray-manager.conf
+
+XRAY_SERVER="vpn.example.com"
+
+# Optional overrides:
+# XRAY_IF="xray0"
+# XRAY_ADDR="172.19.0.1/30"
+# XRAY_SOCKS_HOST="127.0.0.1"
+# XRAY_SOCKS_PORT="10808"
