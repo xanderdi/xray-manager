@@ -1,0 +1,34 @@
+#!/bin/bash
+set -u
+
+IFACE="${1:-}"
+ACTION="${2:-}"
+
+MODE_FILE="/var/lib/xray-manager/mode"
+XRAY_MODE="/usr/local/bin/xray-mode"
+
+case "$ACTION" in
+    up|dhcp4-change)
+        ;;
+    *)
+        exit 0
+        ;;
+esac
+
+# Ignore events from xray0, Docker, bridges, etc.
+DEFAULT_IFACE="$(ip -4 route show default | awk 'NR==1{print $5}')"
+[[ -n "$DEFAULT_IFACE" ]] || exit 0
+[[ "$IFACE" == "$DEFAULT_IFACE" ]] || exit 0
+
+[[ -r "$MODE_FILE" ]] || exit 0
+
+MODE="$(cat "$MODE_FILE")"
+
+case "$MODE" in
+    SPLIT)
+        "$XRAY_MODE" split >/dev/null 2>&1
+        ;;
+    FULL)
+        "$XRAY_MODE" full >/dev/null 2>&1
+        ;;
+esac
