@@ -1,13 +1,20 @@
 #!/bin/bash
 set -u
 
-XRAY_SERVICE="xray.service"
-STATE_DIR="/run/xray-manager"
-MODE_FILE="${STATE_DIR}/mode"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
+
+if [[ -r "${PROJECT_DIR}/lib/config.sh" ]]; then
+    LIB_DIR="${PROJECT_DIR}/lib"
+else
+    LIB_DIR="/usr/local/lib/xray-manager"
+fi
+
+source "${LIB_DIR}/config.sh"
 
 get_mode() {
-    if [[ -r "$MODE_FILE" ]]; then
-        cat "$MODE_FILE"
+    if [[ -r "$XRAY_MODE_FILE" ]]; then
+        cat "$XRAY_MODE_FILE"
     else
         echo "UNKNOWN"
     fi
@@ -24,11 +31,16 @@ fi
 
 echo
 echo "=== SOCKS ==="
-ss -lnt 2>/dev/null | grep ':10808' || echo "127.0.0.1:10808 not listening"
+ss -lnt 2>/dev/null | grep ":${XRAY_SOCKS_PORT}" \
+    || echo "${XRAY_SOCKS_HOST}:${XRAY_SOCKS_PORT} not listening"
 
 echo
 echo "=== TUN ==="
-ip link show xray0 2>/dev/null || echo "xray0 absent"
+if ip link show "$XRAY_IF" >/dev/null 2>&1; then
+    ip -4 addr show "$XRAY_IF"
+else
+    echo "$XRAY_IF absent"
+fi
 
 echo
 echo "=== Routes ==="

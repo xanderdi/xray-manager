@@ -9,7 +9,7 @@ XRAY_SOCKS_CONFIG="${XRAY_CONFIG_DIR}/config.proxy.json"
 XRAY_FULL_CONFIG="${XRAY_CONFIG_DIR}/config.tun.json"
 XRAY_SPLIT_CONFIG="${XRAY_CONFIG_DIR}/config.split.manual.json"
 
-XRAY_STATE_DIR="/run/xray-manager"
+XRAY_STATE_DIR="/var/lib/xray-manager"
 XRAY_MODE_FILE="${XRAY_STATE_DIR}/mode"
 
 XRAY_IF="xray0"
