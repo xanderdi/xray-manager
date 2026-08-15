@@ -5,9 +5,15 @@ XRAY_BIN="/usr/local/bin/xray"
 
 XRAY_CONFIG_DIR="/usr/local/etc/xray"
 XRAY_ACTIVE_CONFIG="${XRAY_CONFIG_DIR}/config.json"
-XRAY_SOCKS_CONFIG="${XRAY_CONFIG_DIR}/config.proxy.json"
-XRAY_FULL_CONFIG="${XRAY_CONFIG_DIR}/config.tun.json"
-XRAY_SPLIT_CONFIG="${XRAY_CONFIG_DIR}/config.split.manual.json"
+
+XRAY_SOCKS_CONFIG="${XRAY_CONFIG_DIR}/socks.json"
+[[ -r "$XRAY_SOCKS_CONFIG" ]] || XRAY_SOCKS_CONFIG="${XRAY_CONFIG_DIR}/config.proxy.json"
+
+XRAY_FULL_CONFIG="${XRAY_CONFIG_DIR}/full.json"
+[[ -r "$XRAY_FULL_CONFIG" ]] || XRAY_FULL_CONFIG="${XRAY_CONFIG_DIR}/config.tun.json"
+
+XRAY_SPLIT_CONFIG="${XRAY_CONFIG_DIR}/split.json"
+[[ -r "$XRAY_SPLIT_CONFIG" ]] || XRAY_SPLIT_CONFIG="${XRAY_CONFIG_DIR}/config.split.manual.json"
 
 XRAY_STATE_DIR="/var/lib/xray-manager"
 XRAY_MODE_FILE="${XRAY_STATE_DIR}/mode"
