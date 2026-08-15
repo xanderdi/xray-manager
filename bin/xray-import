@@ -1,0 +1,144 @@
+#!/bin/bash
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
+
+usage() {
+    echo "Usage: xray-import <connection.conf> [output-dir]"
+    exit 1
+}
+
+[[ $# -ge 1 && $# -le 2 ]] || usage
+
+CONNECTION_FILE="$1"
+OUTPUT_DIR="${2:-/usr/local/etc/xray}"
+
+[[ -r "$CONNECTION_FILE" ]] || {
+    echo "ERROR: cannot read $CONNECTION_FILE"
+    exit 1
+}
+
+# shellcheck disable=SC1090
+source "$CONNECTION_FILE"
+
+required_vars=(
+    VPN_SERVER
+    VPN_PORT
+    VLESS_UUID
+    VLESS_FLOW
+    TRANSPORT_NETWORK
+    TRANSPORT_HEADER_TYPE
+    TRANSPORT_PATH
+    REALITY_SERVER_NAME
+    REALITY_FINGERPRINT
+    REALITY_PUBLIC_KEY
+    REALITY_SHORT_ID
+    REALITY_SPIDER_X
+)
+
+for var in "${required_vars[@]}"; do
+    if [[ ! -v "$var" ]]; then
+        echo "ERROR: missing variable: $var"
+        exit 1
+    fi
+done
+
+UPLINK_INTERFACE="$(
+    ip -4 route show default |
+    awk 'NR==1{print $5}'
+)"
+
+[[ -n "$UPLINK_INTERFACE" ]] || {
+    echo "ERROR: cannot determine uplink interface"
+    exit 1
+}
+
+mkdir -p "$OUTPUT_DIR"
+
+export \
+    VPN_SERVER \
+    VPN_PORT \
+    VLESS_UUID \
+    VLESS_FLOW \
+    TRANSPORT_NETWORK \
+    TRANSPORT_HEADER_TYPE \
+    TRANSPORT_PATH \
+    REALITY_SERVER_NAME \
+    REALITY_FINGERPRINT \
+    REALITY_PUBLIC_KEY \
+    REALITY_SHORT_ID \
+    REALITY_SPIDER_X \
+    UPLINK_INTERFACE
+
+python3 - "$PROJECT_DIR" "$OUTPUT_DIR" <<'PY'
+import json
+import os
+import sys
+from pathlib import Path
+
+project_dir = Path(sys.argv[1])
+output_dir = Path(sys.argv[2])
+
+mapping = {
+    "VPN_SERVER": os.environ["VPN_SERVER"],
+    "VPN_PORT": int(os.environ["VPN_PORT"]),
+    "VLESS_UUID": os.environ["VLESS_UUID"],
+    "VLESS_FLOW": os.environ["VLESS_FLOW"],
+    "TRANSPORT_NETWORK": os.environ["TRANSPORT_NETWORK"],
+    "TRANSPORT_HEADER_TYPE": os.environ["TRANSPORT_HEADER_TYPE"],
+    "TRANSPORT_PATH": os.environ["TRANSPORT_PATH"],
+    "REALITY_SERVER_NAME": os.environ["REALITY_SERVER_NAME"],
+    "REALITY_FINGERPRINT": os.environ["REALITY_FINGERPRINT"],
+    "REALITY_PUBLIC_KEY": os.environ["REALITY_PUBLIC_KEY"],
+    "REALITY_SHORT_ID": os.environ["REALITY_SHORT_ID"],
+    "REALITY_SPIDER_X": os.environ["REALITY_SPIDER_X"],
+    "UPLINK_INTERFACE": os.environ["UPLINK_INTERFACE"],
+}
+
+def replace_values(obj):
+    if isinstance(obj, dict):
+        return {k: replace_values(v) for k, v in obj.items()}
+
+    if isinstance(obj, list):
+        return [replace_values(v) for v in obj]
+
+    if isinstance(obj, str):
+        if obj in mapping:
+            return mapping[obj]
+
+        return obj
+
+    return obj
+
+for name in ("socks", "full", "split"):
+    src = project_dir / "configs" / f"{name}.json"
+    dst = output_dir / f"{name}.json"
+
+    cfg = json.loads(src.read_text())
+    cfg = replace_values(cfg)
+
+    proxy = next(
+        o for o in cfg["outbounds"]
+        if o.get("tag") == "proxy"
+    )
+
+    user = proxy["settings"]["vnext"][0]["users"][0]
+    user["flow"] = mapping["VLESS_FLOW"]
+
+    request = (
+        proxy["streamSettings"]
+        .get("rawSettings", {})
+        .get("header", {})
+        .get("request")
+    )
+
+    if request is not None:
+        request["path"] = [mapping["TRANSPORT_PATH"]]
+
+    dst.write_text(
+        json.dumps(cfg, indent=2) + "\n"
+    )
+
+    print(f"Generated: {dst}")
+PY

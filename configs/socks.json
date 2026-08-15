@@ -30,7 +30,7 @@
         "vnext": [
           {
             "address": "VPN_SERVER",
-            "port": 443,
+            "port": "VPN_PORT",
             "users": [
               {
                 "id": "VLESS_UUID",
@@ -42,11 +42,11 @@
         ]
       },
       "streamSettings": {
-        "network": "raw",
+        "network": "TRANSPORT_NETWORK",
         "security": "reality",
         "rawSettings": {
           "header": {
-            "type": "http",
+            "type": "TRANSPORT_HEADER_TYPE",
             "request": {
               "version": "1.1",
               "method": "GET",
@@ -58,8 +58,8 @@
           }
         },
         "realitySettings": {
-          "serverName": "www.intel.com",
-          "fingerprint": "chrome",
+          "serverName": "REALITY_SERVER_NAME",
+          "fingerprint": "REALITY_FINGERPRINT",
           "publicKey": "REALITY_PUBLIC_KEY",
           "shortId": "REALITY_SHORT_ID",
           "spiderX": "REALITY_SPIDER_X"

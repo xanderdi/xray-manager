@@ -47,6 +47,7 @@ mkdir -p "$BACKUP_DIR"
 
 for file in \
     /usr/local/bin/xray-mode \
+    /usr/local/bin/xray-import \
     /usr/local/bin/xray-status \
     /usr/local/lib/xray-manager/config.sh \
     /usr/local/lib/xray-manager/routes.sh \
@@ -64,6 +65,7 @@ echo
 echo "Installing xray-manager files..."
 
 install -m 755 "$PROJECT_DIR/bin/xray-mode" /usr/local/bin/xray-mode
+install -m 755 "$PROJECT_DIR/bin/xray-import" /usr/local/bin/xray-import
 install -m 755 "$PROJECT_DIR/bin/xray-status" /usr/local/bin/xray-status
 
 install -m 644 "$PROJECT_DIR/lib/config.sh" \
