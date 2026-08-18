@@ -125,8 +125,8 @@ mode_split() {
 
     tun_prepare
     server_bypass_add
-    dns_bypass_add
     full_routes_add
+    dns_bypass_add
 
     set_mode "SPLIT"
 

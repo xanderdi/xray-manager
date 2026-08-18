@@ -63,7 +63,7 @@ tun_cleanup() {
 }
 
 dns_bypass_add() {
-    local gateway device dns
+    local gateway device dns route_dev
 
     gateway="$(get_default_gateway)"
     device="$(get_default_device)"
@@ -80,7 +80,22 @@ dns_bypass_add() {
                 ;;
         esac
 
-        ip route replace "$dns/32" via "$gateway" dev "$device" 2>/dev/null || true
+        route_dev="$(
+            ip -4 route get "$dns" 2>/dev/null |
+            awk 'NR==1{
+                for (i=1; i<=NF; i++) {
+                    if ($i=="dev") {
+                        print $(i+1)
+                        exit
+                    }
+                }
+            }'
+        )"
+
+        # Already direct/local — no extra route needed.
+        [[ "$route_dev" == "$XRAY_IF" ]] || continue
+
+        ip route replace "$dns/32" via "$gateway" dev "$device"
     done
 }
 
