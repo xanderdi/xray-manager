@@ -6,15 +6,27 @@ PROJECT_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
 
 usage() {
     echo "Usage:"
-    echo "  xray-import <connection.conf> [output-dir]"
-    echo "  xray-import 'vless://...' [output-dir]"
+    echo "  xray-import <connection.conf|vless://...> <output-dir>"
+    echo "  xray-import --install <connection.conf|vless://...>"
     exit 1
 }
 
-[[ $# -ge 1 && $# -le 2 ]] || usage
+INSTALL_MODE=false
 
-INPUT="$1"
-OUTPUT_DIR="${2:-/usr/local/etc/xray}"
+if [[ "${1:-}" == "--install" ]]; then
+    INSTALL_MODE=true
+    shift
+fi
+
+if [[ "$INSTALL_MODE" == true ]]; then
+    [[ $# -eq 1 ]] || usage
+    INPUT="$1"
+    OUTPUT_DIR="$(mktemp -d /tmp/xray-import.XXXXXX)"
+else
+    [[ $# -eq 2 ]] || usage
+    INPUT="$1"
+    OUTPUT_DIR="$2"
+fi
 
 if [[ "$INPUT" == vless://* ]]; then
     eval "$(
@@ -236,3 +248,66 @@ validate_config "$OUTPUT_DIR/split.json" split
 
 echo
 echo "All generated configs are valid"
+
+if [[ "${INSTALL_MODE:-false}" == true ]]; then
+    RUNTIME_DIR="/usr/local/etc/xray"
+    BACKUP_DIR="/var/backups/xray-manager/import-$(date +%Y%m%d-%H%M%S)"
+
+    echo
+    echo "Installing validated configs..."
+    echo "Backup: $BACKUP_DIR"
+
+    sudo mkdir -p "$BACKUP_DIR"
+    sudo mkdir -p "$RUNTIME_DIR"
+    sudo mkdir -p /etc/xray-manager
+
+    if sudo test -e /etc/xray-manager/xray-manager.conf; then
+        sudo cp -a \
+            /etc/xray-manager/xray-manager.conf \
+            "$BACKUP_DIR/xray-manager.conf"
+    fi
+
+    for name in socks full split; do
+        if sudo test -e "$RUNTIME_DIR/$name.json"; then
+            sudo cp -a \
+                "$RUNTIME_DIR/$name.json" \
+                "$BACKUP_DIR/$name.json"
+        fi
+    done
+
+    for name in socks full split; do
+        sudo install -m 640 \
+            "$OUTPUT_DIR/$name.json" \
+            "$RUNTIME_DIR/$name.json.new"
+    done
+
+    for name in socks full split; do
+        sudo mv -f \
+            "$RUNTIME_DIR/$name.json.new" \
+            "$RUNTIME_DIR/$name.json"
+    done
+
+    sudo chown root:nogroup \
+        "$RUNTIME_DIR/socks.json" \
+        "$RUNTIME_DIR/full.json" \
+        "$RUNTIME_DIR/split.json"
+
+    printf 'XRAY_SERVER="%s"\n' "$VPN_SERVER" | \
+        sudo tee /etc/xray-manager/xray-manager.conf.new >/dev/null
+
+    sudo chmod 644 /etc/xray-manager/xray-manager.conf.new
+    sudo chown root:root /etc/xray-manager/xray-manager.conf.new
+
+    sudo mv -f \
+        /etc/xray-manager/xray-manager.conf.new \
+        /etc/xray-manager/xray-manager.conf
+
+    rm -rf "$OUTPUT_DIR"
+
+    echo
+    echo "Applying current mode..."
+
+    sudo /usr/local/bin/xray-mode restore
+
+    echo "Runtime configs installed"
+fi
