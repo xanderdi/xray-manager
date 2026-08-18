@@ -134,6 +134,8 @@ mode_split() {
 }
 
 mode_full() {
+    dns_bypass_del
+
     cp -f "$XRAY_FULL_CONFIG" "$XRAY_ACTIVE_CONFIG"
 
     validate_tun_config "$XRAY_ACTIVE_CONFIG"
