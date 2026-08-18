@@ -61,3 +61,42 @@ server_bypass_del() {
 tun_cleanup() {
     ip link delete "$XRAY_IF" 2>/dev/null || true
 }
+
+dns_bypass_add() {
+    local gateway device dns
+
+    gateway="$(get_default_gateway)"
+    device="$(get_default_device)"
+
+    [[ -n "$gateway" && -n "$device" ]] || return 1
+
+    awk '/^nameserver[[:space:]]+/ {print $2}' /etc/resolv.conf |
+    while read -r dns; do
+        [[ -n "$dns" ]] || continue
+
+        case "$dns" in
+            127.*|::1)
+                continue
+                ;;
+        esac
+
+        ip route replace "$dns/32" via "$gateway" dev "$device" 2>/dev/null || true
+    done
+}
+
+dns_bypass_del() {
+    local dns
+
+    awk '/^nameserver[[:space:]]+/ {print $2}' /etc/resolv.conf |
+    while read -r dns; do
+        [[ -n "$dns" ]] || continue
+
+        case "$dns" in
+            127.*|::1)
+                continue
+                ;;
+        esac
+
+        ip route del "$dns/32" 2>/dev/null || true
+    done
+}

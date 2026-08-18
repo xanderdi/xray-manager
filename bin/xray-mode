@@ -40,6 +40,7 @@ get_mode() {
 
 mode_off() {
     full_routes_del
+    dns_bypass_del
     server_bypass_del
     systemctl stop "$XRAY_SERVICE"
     tun_cleanup
@@ -49,11 +50,12 @@ mode_off() {
 
 mode_socks() {
     full_routes_del
+    dns_bypass_del
     server_bypass_del
 
     cp -f "$XRAY_SOCKS_CONFIG" "$XRAY_ACTIVE_CONFIG"
 
-    "$XRAY_BIN" run -test -config "$XRAY_ACTIVE_CONFIG" >/dev/null
+    validate_tun_config "$XRAY_ACTIVE_CONFIG"
 
     systemctl restart "$XRAY_SERVICE"
     tun_cleanup
@@ -77,10 +79,38 @@ mode_socks() {
     echo "SOCKS5: ${XRAY_SOCKS_HOST}:${XRAY_SOCKS_PORT}"
 }
 
+validate_tun_config() {
+    local config="$1"
+    local tmp
+
+    tmp="$(mktemp --suffix=.json)"
+
+    python3 - "$config" "$tmp" "$$" <<'PYCFG'
+import json
+import sys
+
+src, dst, pid = sys.argv[1:4]
+
+with open(src) as f:
+    cfg = json.load(f)
+
+for inbound in cfg.get("inbounds", []):
+    if inbound.get("tag") == "tun-in":
+        inbound.setdefault("settings", {})["name"] = f"xrt{pid}"
+
+with open(dst, "w") as f:
+    json.dump(cfg, f, indent=2)
+    f.write("\n")
+PYCFG
+
+    "$XRAY_BIN" run -test -config "$tmp" >/dev/null
+    rm -f "$tmp"
+}
+
 mode_split() {
     cp -f "$XRAY_SPLIT_CONFIG" "$XRAY_ACTIVE_CONFIG"
 
-    "$XRAY_BIN" run -test -config "$XRAY_ACTIVE_CONFIG" >/dev/null
+    validate_tun_config "$XRAY_ACTIVE_CONFIG"
     systemctl restart "$XRAY_SERVICE"
 
     for _ in {1..20}; do
@@ -95,6 +125,7 @@ mode_split() {
 
     tun_prepare
     server_bypass_add
+    dns_bypass_add
     full_routes_add
 
     set_mode "SPLIT"
@@ -105,7 +136,7 @@ mode_split() {
 mode_full() {
     cp -f "$XRAY_FULL_CONFIG" "$XRAY_ACTIVE_CONFIG"
 
-    "$XRAY_BIN" run -test -config "$XRAY_ACTIVE_CONFIG" >/dev/null
+    validate_tun_config "$XRAY_ACTIVE_CONFIG"
     systemctl restart "$XRAY_SERVICE"
 
     for _ in {1..20}; do
