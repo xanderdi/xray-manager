@@ -40,6 +40,8 @@ echo
 echo "Removing xray-manager files..."
 
 rm -f /usr/local/bin/xray-mode
+rm -f /usr/local/bin/xray-import
+rm -f /usr/local/bin/xray-check
 rm -f /usr/local/bin/xray-status
 
 rm -rf /usr/local/lib/xray-manager
