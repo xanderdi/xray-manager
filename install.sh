@@ -16,12 +16,51 @@ echo "Project directory: $PROJECT_DIR"
 echo
 echo "Checking dependencies..."
 
-for cmd in bash ip ss systemctl install getent awk grep; do
+for cmd in bash ip ss systemctl install getent awk grep dpkg-query sudo; do
     if ! command -v "$cmd" >/dev/null 2>&1; then
         echo "ERROR: required command not found: $cmd"
         exit 1
     fi
 done
+
+
+echo
+echo "Checking required packages..."
+
+required_packages=(
+    iproute2
+    network-manager
+    python3
+    curl
+    sudo
+)
+
+missing_packages=()
+
+for pkg in "${required_packages[@]}"; do
+    if ! dpkg-query -W -f='${Status}' "$pkg" 2>/dev/null | \
+        grep -q '^install ok installed$'
+    then
+        missing_packages+=("$pkg")
+    fi
+done
+
+if (( ${#missing_packages[@]} > 0 )); then
+    echo "ERROR: missing required packages:"
+    printf '  %s\n' "${missing_packages[@]}"
+    echo
+    echo "Install them with:"
+    echo "  apt install ${missing_packages[*]}"
+    exit 1
+fi
+
+if ! systemctl is-active --quiet NetworkManager; then
+    echo "ERROR: NetworkManager is not active"
+    exit 1
+fi
+
+echo "Required packages: OK"
+echo "NetworkManager: active"
 
 if [[ ! -x /usr/local/bin/xray ]]; then
     echo "ERROR: Xray Core not found at /usr/local/bin/xray"
@@ -41,6 +80,16 @@ install -d -m 755 /usr/local/etc/xray
 
 echo
 echo "Preflight OK"
+
+
+if [[ ! -e /var/lib/xray-manager/mode ]]; then
+    printf 'OFF\n' > /var/lib/xray-manager/mode
+    chmod 644 /var/lib/xray-manager/mode
+    echo "Initial mode: OFF"
+else
+    echo "Existing mode preserved: $(cat /var/lib/xray-manager/mode)"
+fi
+
 
 BACKUP_DIR="/var/backups/xray-manager/$(date +%Y%m%d-%H%M%S)"
 mkdir -p "$BACKUP_DIR"
@@ -85,3 +134,16 @@ systemctl daemon-reload
 echo
 echo "Manager files installed"
 
+
+echo
+echo "Configuring boot restore..."
+
+systemctl disable xray.service 2>/dev/null || true
+systemctl enable xray-manager-restore.service
+
+echo "xray.service: disabled"
+echo "xray-manager-restore.service: enabled"
+
+echo
+echo "Installation complete"
+echo "Current mode: $(cat /var/lib/xray-manager/mode)"
