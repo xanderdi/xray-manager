@@ -45,3 +45,16 @@ fi
 echo
 echo "=== Routes ==="
 ip -4 route show
+
+echo
+echo "=== Server Route ==="
+
+SERVER_IP="$(getent ahostsv4 "$XRAY_SERVER" 2>/dev/null | awk 'NR==1{print $1}')"
+
+if [[ -n "$SERVER_IP" ]]; then
+    echo "Server: $XRAY_SERVER ($SERVER_IP)"
+    ip -4 route get "$SERVER_IP" 2>/dev/null || echo "route lookup failed"
+else
+    echo "Server: $XRAY_SERVER"
+    echo "DNS resolution failed"
+fi

@@ -1,0 +1,54 @@
+#!/bin/bash
+set -u
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
+
+if [[ -r "${PROJECT_DIR}/lib/config.sh" ]]; then
+    LIB_DIR="${PROJECT_DIR}/lib"
+else
+    LIB_DIR="/usr/local/lib/xray-manager"
+fi
+
+source "${LIB_DIR}/config.sh"
+
+echo "=== Direct Internet ==="
+if DIRECT_IP="$(curl -4fsS --max-time 10 https://ifconfig.me 2>/dev/null)"; then
+    echo "OK: $DIRECT_IP"
+else
+    echo "FAILED"
+fi
+
+echo
+echo "=== SOCKS Internet ==="
+if SOCKS_IP="$(
+    curl -4fsS --max-time 10 \
+      --socks5-hostname "${XRAY_SOCKS_HOST}:${XRAY_SOCKS_PORT}" \
+      https://ifconfig.me 2>/dev/null
+)"; then
+    echo "OK: $SOCKS_IP"
+else
+    echo "FAILED"
+fi
+
+echo
+echo "=== Xray Server ==="
+
+SERVER_IP="$(
+    getent ahostsv4 "$XRAY_SERVER" 2>/dev/null |
+    awk 'NR==1{print $1}'
+)"
+
+if [[ -n "$SERVER_IP" ]]; then
+    echo "Server: $XRAY_SERVER ($SERVER_IP)"
+
+    if timeout 5 bash -c \
+      "</dev/tcp/$SERVER_IP/443" 2>/dev/null
+    then
+        echo "TCP/443: OK"
+    else
+        echo "TCP/443: FAILED"
+    fi
+else
+    echo "DNS resolution: FAILED"
+fi
