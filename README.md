@@ -196,4 +196,4 @@ Installer сохраняет предыдущие версии файлов в:
 
     sudo ./uninstall.sh --purge
 
-Xray Core и `/usr/local/etc/xray` uninstall-скрипт не удаляет.
+Xray Core, `/usr/local/etc/xray` и `/etc/systemd/system/xray.service` uninstall-скрипт не удаляет.
