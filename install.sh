@@ -101,6 +101,7 @@ for file in \
     /usr/local/bin/xray-status \
     /usr/local/lib/xray-manager/config.sh \
     /usr/local/lib/xray-manager/routes.sh \
+    /etc/systemd/system/xray.service \
     /etc/systemd/system/xray-manager-restore.service \
     /etc/NetworkManager/dispatcher.d/90-xray-manager
 do
@@ -124,6 +125,9 @@ install -m 644 "$PROJECT_DIR/lib/config.sh" \
 
 install -m 644 "$PROJECT_DIR/lib/routes.sh" \
     /usr/local/lib/xray-manager/routes.sh
+
+install -m 644 "$PROJECT_DIR/systemd/xray.service" \
+    /etc/systemd/system/xray.service
 
 install -m 644 "$PROJECT_DIR/systemd/xray-manager-restore.service" \
     /etc/systemd/system/xray-manager-restore.service
