@@ -85,21 +85,29 @@ else
     echo "Required packages: OK"
 fi
 
+XRAY_MANAGER_SOURCE="${XRAY_MANAGER_SOURCE:-release}"
 XRAY_MANAGER_VERSION="${XRAY_MANAGER_VERSION:-latest}"
 
-if [[ "$XRAY_MANAGER_VERSION" == "latest" ]]; then
-    XRAY_MANAGER_VERSION="$(
-        curl -fsSI https://github.com/xanderdi/xray-manager/releases/latest |
-        awk -F/ 'tolower($1) ~ /^location:/ {gsub("\r","",$NF); print $NF}'
-    )"
-fi
+if [[ "$XRAY_MANAGER_SOURCE" == "release" ]]; then
+    XRAY_MANAGER_VERSION="${XRAY_MANAGER_VERSION:-latest}"
 
-if [[ -z "$XRAY_MANAGER_VERSION" ]]; then
-    echo "ERROR: failed to determine xray-manager release version"
-    exit 1
-fi
+    if [[ "$XRAY_MANAGER_VERSION" == "latest" ]]; then
+        XRAY_MANAGER_VERSION="$(
+            curl -fsSI https://github.com/xanderdi/xray-manager/releases/latest |
+            awk -F/ 'tolower($1) ~ /^location:/ {gsub("\r","",$NF); print $NF}'
+        )"
+    fi
 
-echo "xray-manager release: $XRAY_MANAGER_VERSION"
+    if [[ -z "$XRAY_MANAGER_VERSION" ]]; then
+        echo "ERROR: failed to determine xray-manager release version"
+        exit 1
+    fi
+
+    echo "xray-manager release: $XRAY_MANAGER_VERSION"
+else
+    XRAY_MANAGER_VERSION="local"
+    echo "xray-manager source: local checkout"
+fi
 
 for cmd in apt-get dpkg curl unzip sha256sum install; do
     if ! command -v "$cmd" >/dev/null 2>&1; then
@@ -155,11 +163,8 @@ done
     $XRAY_BIN version | head -1
 fi
 
-XRAY_MANAGER_SOURCE="${XRAY_MANAGER_SOURCE:-release}"
-
 if [[ "$XRAY_MANAGER_SOURCE" == "local" ]]; then
     MANAGER_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-    echo "xray-manager source: local checkout"
 else
     MANAGER_TMP_DIR="$(mktemp -d)"
     MANAGER_ARCHIVE="$MANAGER_TMP_DIR/xray-manager.tar.gz"
