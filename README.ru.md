@@ -1,4 +1,10 @@
 # xray-manager
+[![Release](https://img.shields.io/github/v/release/xanderdi/xray-manager)](https://github.com/xanderdi/xray-manager/releases)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Debian 13](https://img.shields.io/badge/Debian-13-blue)](https://www.debian.org/)
+[![Shell](https://img.shields.io/badge/Shell-Bash-green)](https://www.gnu.org/software/bash/)
+
+[English](README.md) | **Русский**
 
 `xray-manager` — набор скриптов для управления Xray Core на Debian с несколькими режимами маршрутизации:
 
