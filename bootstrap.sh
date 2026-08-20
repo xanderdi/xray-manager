@@ -155,25 +155,32 @@ done
     $XRAY_BIN version | head -1
 fi
 
-MANAGER_TMP_DIR="$(mktemp -d)"
-MANAGER_ARCHIVE="$MANAGER_TMP_DIR/xray-manager.tar.gz"
+XRAY_MANAGER_SOURCE="${XRAY_MANAGER_SOURCE:-release}"
 
-echo "Downloading xray-manager $XRAY_MANAGER_VERSION..."
+if [[ "$XRAY_MANAGER_SOURCE" == "local" ]]; then
+    MANAGER_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+    echo "xray-manager source: local checkout"
+else
+    MANAGER_TMP_DIR="$(mktemp -d)"
+    MANAGER_ARCHIVE="$MANAGER_TMP_DIR/xray-manager.tar.gz"
 
-curl -fsSL \
-    "https://github.com/xanderdi/xray-manager/archive/refs/tags/${XRAY_MANAGER_VERSION}.tar.gz" \
-    -o "$MANAGER_ARCHIVE"
+    echo "Downloading xray-manager $XRAY_MANAGER_VERSION..."
 
-tar -xzf "$MANAGER_ARCHIVE" -C "$MANAGER_TMP_DIR"
+    curl -fsSL \
+        "https://github.com/xanderdi/xray-manager/archive/refs/tags/${XRAY_MANAGER_VERSION}.tar.gz" \
+        -o "$MANAGER_ARCHIVE"
 
-MANAGER_DIR="$MANAGER_TMP_DIR/xray-manager-${XRAY_MANAGER_VERSION#v}"
+    tar -xzf "$MANAGER_ARCHIVE" -C "$MANAGER_TMP_DIR"
 
-if [[ ! -x "$MANAGER_DIR/install.sh" ]]; then
-    echo "ERROR: install.sh not found in xray-manager release"
-    exit 1
+    MANAGER_DIR="$MANAGER_TMP_DIR/xray-manager-${XRAY_MANAGER_VERSION#v}"
+
+    echo "xray-manager release extracted: $MANAGER_DIR"
 fi
 
-echo "xray-manager release extracted: $MANAGER_DIR"
+if [[ ! -x "$MANAGER_DIR/install.sh" ]]; then
+    echo "ERROR: install.sh not found: $MANAGER_DIR/install.sh"
+    exit 1
+fi
 
 if [[ "${DRY_RUN:-0}" == "1" ]]; then
     echo "DRY_RUN: xray-manager install skipped"
