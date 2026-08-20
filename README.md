@@ -44,7 +44,7 @@
 
 Клонировать репозиторий:
 
-    git clone <REPOSITORY_URL> ~/xray-manager
+    git clone https://github.com/xanderdi/xray-manager.git ~/xray-manager
     cd ~/xray-manager
 
 Установить manager:
