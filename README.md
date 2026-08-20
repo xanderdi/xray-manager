@@ -1,199 +1,250 @@
 # xray-manager
 
-`xray-manager` — набор скриптов для управления Xray Core на Debian с несколькими режимами маршрутизации:
+[![Release](https://img.shields.io/github/v/release/xanderdi/xray-manager)](https://github.com/xanderdi/xray-manager/releases)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Debian 13](https://img.shields.io/badge/Debian-13-blue)](https://www.debian.org/)
+[![Shell](https://img.shields.io/badge/Shell-Bash-green)](https://www.gnu.org/software/bash/)
 
-- `OFF` — Xray полностью выключен
-- `SOCKS` — локальный SOCKS5-прокси на `127.0.0.1:10808`
-- `SPLIT` — системный трафик через TUN с прямым доступом к DNS и Xray-серверу
-- `FULL` — системный трафик через TUN, кроме обязательного bypass до Xray-сервера
+**English** | [Русский](README.ru.md)
 
-Проект поддерживает:
+`xray-manager` is a CLI toolkit for managing Xray Core on Debian with multiple routing modes:
 
-- VLESS + Reality
-- импорт `vless://...`
-- генерацию runtime-конфигов
-- проверку конфигов перед установкой
-- backup перед заменой конфигурации
-- восстановление последнего режима после загрузки
-- восстановление маршрутов после смены сети через NetworkManager
-- health-check и status-команды
+* `OFF` — Xray is completely disabled
+* `SOCKS` — local SOCKS5 proxy on `127.0.0.1:10808`
+* `SPLIT` — system traffic through TUN while keeping direct access to DNS and the Xray server
+* `FULL` — system traffic through TUN with only the required bypass to the Xray server
+
+## Features
+
+* VLESS + Reality support
+* import from `vless://...` URIs
+* automatic runtime configuration generation
+* configuration validation before installation
+* backup before configuration replacement
+* restoration of the last active mode after boot
+* route recovery after network changes via NetworkManager
+* health-check and status commands
 
 ## Requirements
 
-Поддерживаемая система:
+Supported system:
 
-- Debian 13
-- NetworkManager
-- systemd
-- Xray Core установлен в `/usr/local/bin/xray`
+* Debian 13
+* NetworkManager
+* systemd
+* Xray Core installed at `/usr/local/bin/xray`
 
-Необходимые пакеты:
+Required packages:
 
-    sudo apt install \
-      iproute2 \
-      network-manager \
-      python3 \
-      curl \
-      sudo
+```bash
+sudo apt install \
+  iproute2 \
+  network-manager \
+  python3 \
+  curl \
+  sudo
+```
 
-Проверить Xray Core:
+Check Xray Core:
 
-    /usr/local/bin/xray version
+```bash
+/usr/local/bin/xray version
+```
 
 ## Installation
 
-Клонировать репозиторий:
+Clone the repository:
 
-    git clone https://github.com/xanderdi/xray-manager.git ~/xray-manager
-    cd ~/xray-manager
+```bash
+git clone https://github.com/xanderdi/xray-manager.git ~/xray-manager
+cd ~/xray-manager
+```
 
-Установить manager:
+Install xray-manager:
 
-    sudo ./install.sh
+```bash
+sudo ./install.sh
+```
 
-Installer:
+The installer:
 
-- проверяет зависимости;
-- проверяет наличие Xray Core;
-- создаёт необходимые каталоги;
-- делает backup существующих файлов;
-- устанавливает CLI-скрипты;
-- устанавливает systemd restore unit;
-- устанавливает NetworkManager dispatcher;
-- отключает прямой autostart `xray.service`;
-- включает `xray-manager-restore.service`;
-- при первой установке создаёт безопасный режим `OFF`.
+* checks required dependencies
+* checks for Xray Core
+* creates required directories
+* backs up existing files
+* installs CLI tools
+* installs the systemd restore unit
+* installs the NetworkManager dispatcher
+* disables direct autostart of `xray.service`
+* enables `xray-manager-restore.service`
+* initializes new installations in the safe `OFF` mode
 
-Проверить состояние:
+Check status:
 
-    xray-status
+```bash
+xray-status
+```
 
-Проверить connectivity:
+Check connectivity:
 
-    xray-check
+```bash
+xray-check
+```
 
 ## Import configuration
 
-`xray-manager` поддерживает импорт из файла `connection.conf` и напрямую из `vless://` URI.
+`xray-manager` supports importing configuration from a `connection.conf` file or directly from a `vless://` URI.
 
 ### Import from VLESS URI
 
-Проверить и установить runtime-конфигурацию:
+Validate and install a runtime configuration:
 
-    sudo xray-import --install 'vless://...'
+```bash
+sudo xray-import --install 'vless://...'
+```
 
-Перед установкой `xray-import`:
+Before installation, `xray-import`:
 
-- генерирует `socks.json`, `split.json` и `full.json`;
-- проверяет все три конфигурации;
-- делает backup текущих runtime-файлов;
-- обновляет `/etc/xray-manager/xray-manager.conf`;
-- атомарно заменяет runtime-конфиги;
-- восстанавливает текущий режим.
+* generates `socks.json`, `split.json`, and `full.json`
+* validates all three configurations
+* backs up the current runtime files
+* updates `/etc/xray-manager/xray-manager.conf`
+* atomically replaces the runtime configurations
+* restores the currently selected mode
 
 ### Import from connection.conf
 
-Пример структуры:
+Example configuration:
 
-    configs/connection.conf.example
+```text
+configs/connection.conf.example
+```
 
-Установить конфигурацию:
+Install configuration:
 
-    sudo xray-import --install /path/to/connection.conf
+```bash
+sudo xray-import --install /path/to/connection.conf
+```
 
-Сгенерировать конфиги без установки:
+Generate configurations without installing them:
 
-    xray-import /path/to/connection.conf /tmp/xray-test
+```bash
+xray-import /path/to/connection.conf /tmp/xray-test
+```
 
 ## Modes
 
-Переключение режима:
+Switch modes with:
 
-    sudo xray-mode off
-    sudo xray-mode socks
-    sudo xray-mode split
-    sudo xray-mode full
+```bash
+sudo xray-mode off
+sudo xray-mode socks
+sudo xray-mode split
+sudo xray-mode full
+```
 
-Текущий режим сохраняется в:
+The current mode is stored in:
 
-    /var/lib/xray-manager/mode
+```text
+/var/lib/xray-manager/mode
+```
 
-После загрузки системы последний сохранённый режим восстанавливает:
+After boot, the last selected mode is restored by:
 
-    xray-manager-restore.service
+```text
+xray-manager-restore.service
+```
 
 ### OFF
 
-Полностью останавливает Xray и удаляет TUN/служебные маршруты.
+Stops Xray completely and removes TUN and service routes.
 
 ### SOCKS
 
-Запускает локальный SOCKS5:
+Starts a local SOCKS5 proxy on:
 
-    127.0.0.1:10808
+```text
+127.0.0.1:10808
+```
 
-Системная маршрутизация остаётся direct.
+System routing remains direct.
 
 ### SPLIT
 
-Создаёт `xray0` и направляет IPv4 через TUN.
+Creates the `xray0` interface and routes IPv4 traffic through TUN.
 
-При этом manager сохраняет direct-доступ:
+The manager preserves direct access to:
 
-- к Xray-серверу;
-- к DNS-серверам, которым нужен bypass;
-- к локальным сетям через более специфичные маршруты.
+* the Xray server
+* DNS servers that require bypass
+* local networks through more specific routes
 
 ### FULL
 
-Создаёт `xray0` и направляет системный IPv4-трафик через TUN.
+Creates `xray0` and routes system IPv4 traffic through TUN.
 
-Direct bypass остаётся только для Xray-сервера, чтобы не возникала routing loop.
+A direct bypass is retained only for the Xray server to prevent a routing loop.
 
 ## Status and health check
 
-Пассивный статус:
+Passive status:
 
-    xray-status
+```bash
+xray-status
+```
 
-Показывает:
+Displays:
 
-- текущий режим;
-- состояние `xray.service`;
-- SOCKS listener;
-- состояние `xray0`;
-- текущие IPv4-маршруты;
-- маршрут до Xray-сервера.
+* current mode
+* `xray.service` state
+* SOCKS listener state
+* `xray0` state
+* current IPv4 routes
+* route to the Xray server
 
-Активная проверка connectivity:
+Active connectivity check:
 
-    xray-check
+```bash
+xray-check
+```
 
-Проверяет:
+Checks:
 
-- direct-доступ в интернет;
-- доступ через SOCKS;
-- DNS-разрешение Xray-сервера;
-- доступность Xray-сервера по TCP/443.
+* direct internet connectivity
+* connectivity through SOCKS
+* DNS resolution of the Xray server
+* TCP/443 connectivity to the Xray server
 
 ## Backups
 
-Installer сохраняет предыдущие версии файлов в:
+The installer stores previous file versions in:
 
-    /var/backups/xray-manager/
+```text
+/var/backups/xray-manager/
+```
 
-Импорт новой VLESS-конфигурации создаёт отдельный backup:
+Importing a new VLESS configuration creates a separate backup in:
 
-    /var/backups/xray-manager/import-YYYYMMDD-HHMMSS/
+```text
+/var/backups/xray-manager/import-YYYYMMDD-HHMMSS/
+```
 
 ## Uninstall
 
-Удалить только `xray-manager`, сохранив конфигурацию и состояние:
+Remove `xray-manager` while preserving its configuration and state:
 
-    sudo ./uninstall.sh
+```bash
+sudo ./uninstall.sh
+```
 
-Удалить также `/etc/xray-manager` и `/var/lib/xray-manager`:
+Also remove `/etc/xray-manager` and `/var/lib/xray-manager`:
 
-    sudo ./uninstall.sh --purge
+```bash
+sudo ./uninstall.sh --purge
+```
 
-Xray Core, `/usr/local/etc/xray` и `/etc/systemd/system/xray.service` uninstall-скрипт не удаляет.
+The uninstall script does **not** remove Xray Core, `/usr/local/etc/xray`, or `/etc/systemd/system/xray.service`.
+
+## License
+
+Licensed under the [MIT License](LICENSE).
