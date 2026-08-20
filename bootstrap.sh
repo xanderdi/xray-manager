@@ -6,6 +6,16 @@ XRAY_PREFIX="${XRAY_PREFIX:-/usr/local}"
 XRAY_BIN="$XRAY_PREFIX/bin/xray"
 XRAY_SHARE="$XRAY_PREFIX/share/xray"
 
+TMP_DIR=""
+MANAGER_TMP_DIR=""
+
+cleanup() {
+    [[ -n "${TMP_DIR:-}" ]] && rm -rf "$TMP_DIR"
+    [[ -n "${MANAGER_TMP_DIR:-}" ]] && rm -rf "$MANAGER_TMP_DIR"
+}
+
+trap cleanup EXIT
+
 echo "=== xray-manager bootstrap ==="
 
 if [[ $EUID -ne 0 ]]; then
@@ -75,6 +85,22 @@ else
     echo "Required packages: OK"
 fi
 
+XRAY_MANAGER_VERSION="${XRAY_MANAGER_VERSION:-latest}"
+
+if [[ "$XRAY_MANAGER_VERSION" == "latest" ]]; then
+    XRAY_MANAGER_VERSION="$(
+        curl -fsSI https://github.com/xanderdi/xray-manager/releases/latest |
+        awk -F/ 'tolower($1) ~ /^location:/ {gsub("\r","",$NF); print $NF}'
+    )"
+fi
+
+if [[ -z "$XRAY_MANAGER_VERSION" ]]; then
+    echo "ERROR: failed to determine xray-manager release version"
+    exit 1
+fi
+
+echo "xray-manager release: $XRAY_MANAGER_VERSION"
+
 for cmd in apt-get dpkg curl unzip sha256sum install; do
     if ! command -v "$cmd" >/dev/null 2>&1; then
         echo "ERROR: required command not found: $cmd"
@@ -90,11 +116,6 @@ else
 
     XRAY_ZIP="Xray-linux-${XRAY_ARCH}.zip"
     TMP_DIR="$(mktemp -d)"
-
-    cleanup() {
-        rm -rf "$TMP_DIR"
-    }
-    trap cleanup EXIT
 
     echo "Downloading latest Xray Core..."
 
@@ -133,5 +154,37 @@ done
     echo "Xray Core installed:"
     $XRAY_BIN version | head -1
 fi
+
+MANAGER_TMP_DIR="$(mktemp -d)"
+MANAGER_ARCHIVE="$MANAGER_TMP_DIR/xray-manager.tar.gz"
+
+echo "Downloading xray-manager $XRAY_MANAGER_VERSION..."
+
+curl -fsSL \
+    "https://github.com/xanderdi/xray-manager/archive/refs/tags/${XRAY_MANAGER_VERSION}.tar.gz" \
+    -o "$MANAGER_ARCHIVE"
+
+tar -xzf "$MANAGER_ARCHIVE" -C "$MANAGER_TMP_DIR"
+
+MANAGER_DIR="$MANAGER_TMP_DIR/xray-manager-${XRAY_MANAGER_VERSION#v}"
+
+if [[ ! -x "$MANAGER_DIR/install.sh" ]]; then
+    echo "ERROR: install.sh not found in xray-manager release"
+    exit 1
+fi
+
+echo "xray-manager release extracted: $MANAGER_DIR"
+
+if [[ "${DRY_RUN:-0}" == "1" ]]; then
+    echo "DRY_RUN: xray-manager install skipped"
+    echo "Bootstrap preflight: OK"
+    exit 0
+fi
+
+echo "Installing xray-manager $XRAY_MANAGER_VERSION..."
+
+"$MANAGER_DIR/install.sh"
+
+echo "xray-manager installation complete"
 
 echo "Bootstrap preflight: OK"
