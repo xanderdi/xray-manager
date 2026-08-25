@@ -146,18 +146,18 @@ else
 done
 
     install -d -m 755 "$XRAY_PREFIX/bin"
-    
+
     install -d -m 755 "$XRAY_SHARE"
 
 
     install -m 755 "$TMP_DIR/xray/xray" \
-        $XRAY_BIN
+        "$XRAY_BIN"
 
     install -m 644 "$TMP_DIR/xray/geoip.dat" \
-        $XRAY_SHARE/geoip.dat
+        "$XRAY_SHARE/geoip.dat"
 
     install -m 644 "$TMP_DIR/xray/geosite.dat" \
-        $XRAY_SHARE/geosite.dat
+        "$XRAY_SHARE/geosite.dat"
 
     echo "Xray Core installed:"
     $XRAY_BIN version | head -1
