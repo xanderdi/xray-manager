@@ -4,6 +4,19 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
 
+if [[ -d "${PROJECT_DIR}/configs" ]]; then
+    TEMPLATE_DIR="${PROJECT_DIR}/configs"
+else
+    TEMPLATE_DIR="/usr/local/share/xray-manager/configs"
+fi
+
+for template in socks full split; do
+    if [[ ! -r "${TEMPLATE_DIR}/${template}.json" ]]; then
+        echo "ERROR: template not found: ${TEMPLATE_DIR}/${template}.json" >&2
+        exit 1
+    fi
+done
+
 usage() {
     echo "Usage:"
     echo "  xray-import <connection.conf|vless://...> <output-dir>"
@@ -131,13 +144,13 @@ export \
     REALITY_SPIDER_X \
     UPLINK_INTERFACE
 
-python3 - "$PROJECT_DIR" "$OUTPUT_DIR" <<'PY'
+python3 - "$TEMPLATE_DIR" "$OUTPUT_DIR" <<'PY'
 import json
 import os
 import sys
 from pathlib import Path
 
-project_dir = Path(sys.argv[1])
+template_dir = Path(sys.argv[1])
 output_dir = Path(sys.argv[2])
 
 mapping = {
@@ -172,7 +185,7 @@ def replace_values(obj):
     return obj
 
 for name in ("socks", "full", "split"):
-    src = project_dir / "configs" / f"{name}.json"
+    src = template_dir / f"{name}.json"
     dst = output_dir / f"{name}.json"
 
     cfg = json.loads(src.read_text())

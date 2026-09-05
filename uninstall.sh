@@ -45,6 +45,7 @@ rm -f /usr/local/bin/xray-check
 rm -f /usr/local/bin/xray-status
 
 rm -rf /usr/local/lib/xray-manager
+rm -rf /usr/local/share/xray-manager
 
 rm -f /etc/systemd/system/xray-manager-restore.service
 rm -f /etc/NetworkManager/dispatcher.d/90-xray-manager

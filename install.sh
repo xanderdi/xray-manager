@@ -23,6 +23,7 @@ BACKUP_BASE="$(root_path /var/backups/xray-manager)"
 SYSTEMD_DIR="$(root_path /etc/systemd/system)"
 NM_DISPATCHER_DIR="$(root_path /etc/NetworkManager/dispatcher.d)"
 XRAY_ETC_DIR="$(root_path /usr/local/etc/xray)"
+TEMPLATE_DIR="$(root_path /usr/local/share/xray-manager/configs)"
 
 echo "=== xray-manager installer ==="
 
@@ -97,6 +98,7 @@ install -d -m 755 "$STATE_DIR"
 install -d -m 755 "$NM_DISPATCHER_DIR"
 install -d -m 755 "$XRAY_ETC_DIR"
 install -d -m 755 "$LOCAL_BIN_DIR"
+install -d -m 755 "$TEMPLATE_DIR"
 install -d -m 755 "$SYSTEMD_DIR"
 install -d -m 755 "$BACKUP_BASE"
 
@@ -140,6 +142,10 @@ install -m 755 "$PROJECT_DIR/bin/xray-mode" "$LOCAL_BIN_DIR/xray-mode"
 install -m 755 "$PROJECT_DIR/bin/xray-import" "$LOCAL_BIN_DIR/xray-import"
 install -m 755 "$PROJECT_DIR/bin/xray-check" "$LOCAL_BIN_DIR/xray-check"
 install -m 755 "$PROJECT_DIR/bin/xray-status" "$LOCAL_BIN_DIR/xray-status"
+
+install -m 644 "$PROJECT_DIR/configs/socks.json" "$TEMPLATE_DIR/socks.json"
+install -m 644 "$PROJECT_DIR/configs/full.json" "$TEMPLATE_DIR/full.json"
+install -m 644 "$PROJECT_DIR/configs/split.json" "$TEMPLATE_DIR/split.json"
 
 install -m 644 "$PROJECT_DIR/lib/config.sh" \
     "$LOCAL_LIB_DIR/config.sh"
