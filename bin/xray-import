@@ -305,7 +305,7 @@ if [[ "${INSTALL_MODE:-false}" == true ]]; then
         "$RUNTIME_DIR/full.json" \
         "$RUNTIME_DIR/split.json"
 
-    printf 'XRAY_SERVER="%s"\n' "$VPN_SERVER" | \
+    printf 'XRAY_SERVER="%s"\nXRAY_SERVER_PORT="%s"\n' "$VPN_SERVER" "$VPN_PORT" | \
         sudo tee /etc/xray-manager/xray-manager.conf.new >/dev/null
 
     sudo chmod 644 /etc/xray-manager/xray-manager.conf.new
