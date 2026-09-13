@@ -33,6 +33,9 @@ fi
 
 echo
 echo "=== Xray Server ==="
+SERVER_PORT="$(jq -r '.outbounds[] | select(.tag=="proxy") | .settings.vnext[0].port // empty' "$XRAY_ACTIVE_CONFIG" 2>/dev/null)"
+[[ "$SERVER_PORT" =~ ^[0-9]+$ ]] || SERVER_PORT=443
+
 
 SERVER_IP="$(
     getent ahostsv4 "$XRAY_SERVER" 2>/dev/null |
@@ -43,11 +46,11 @@ if [[ -n "$SERVER_IP" ]]; then
     echo "Server: $XRAY_SERVER ($SERVER_IP)"
 
     if timeout 5 bash -c \
-      "</dev/tcp/$SERVER_IP/443" 2>/dev/null
+      "</dev/tcp/$SERVER_IP/$SERVER_PORT" 2>/dev/null
     then
-        echo "TCP/443: OK"
+        echo "TCP/$SERVER_PORT: OK"
     else
-        echo "TCP/443: FAILED"
+        echo "TCP/$SERVER_PORT: FAILED"
     fi
 else
     echo "DNS resolution: FAILED"

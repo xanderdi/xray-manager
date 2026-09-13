@@ -134,7 +134,6 @@ mode_split() {
 }
 
 mode_full() {
-    dns_bypass_del
 
     cp -f "$XRAY_FULL_CONFIG" "$XRAY_ACTIVE_CONFIG"
 
@@ -154,6 +153,7 @@ mode_full() {
     tun_prepare
     server_bypass_add
     full_routes_add
+    dns_bypass_add
 
     set_mode "FULL"
 
